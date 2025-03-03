@@ -1,0 +1,47 @@
+$challengeFolder = "$env:USERPROFILE\Desktop\RealityFracture"
+if (-Not (Test-Path -Path $challengeFolder)) {
+    New-Item -ItemType Directory -Path $challengeFolder | Out-Null
+    Write-Host "Challenge folder created at $challengeFolder"
+} else {
+    Write-Host "Challenge folder already exists."
+}
+
+$originalFile = "$challengeFolder\original_file.txt"
+$originalContent = @"
+This is the original content of the file. The reality fracture will embed the flag in these fragments.
+"@
+Set-Content -Path $originalFile -Value $originalContent
+Write-Host "Original file created: $originalFile"
+
+$flag = "Scarlet_Reality_Heal"
+$modifiedFile = "$challengeFolder\modified_file.txt"
+Set-Content -Path $modifiedFile -Value "$originalContent`nFLAG: $flag"
+Write-Host "Flag embedded into the modified file: $modifiedFile"
+
+$fragmentSize = 50 # Bytes per fragment
+$fileContent = Get-Content -Path $modifiedFile -Raw
+$fragments = [math]::Ceiling($fileContent.Length / $fragmentSize)
+
+for ($i = 0; $i -lt $fragments; $i++) {
+    $startIndex = $i * $fragmentSize
+    $endIndex = [math]::Min(($startIndex + $fragmentSize), $fileContent.Length)
+    $fragmentContent = $fileContent.Substring($startIndex, $endIndex - $startIndex)
+    $fragmentFile = "$challengeFolder\fragment_$($i + 1).bin"
+    [System.IO.File]::WriteAllText($fragmentFile, $fragmentContent)
+    Write-Host "Fragment created: $fragmentFile"
+}
+
+$reconstructedFile = "$challengeFolder\reconstructed_file.txt"
+Remove-Item -Path $reconstructedFile -ErrorAction SilentlyContinue
+
+for ($i = 1; $i -le $fragments; $i++) {
+    $fragmentFile = "$challengeFolder\fragment_$i.bin"
+    Add-Content -Path $reconstructedFile -Value (Get-Content -Path $fragmentFile -Raw)
+}
+
+$reconstructedContent = Get-Content -Path $reconstructedFile -Raw
+if ($reconstructedContent -match $flag) {
+    Write-Host "Reconstruction successful. The flag was found: $flag"
+} else {
+    Write-Host "Reconstruction failed. The flag was not found."
+}
